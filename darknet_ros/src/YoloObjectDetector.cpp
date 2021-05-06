@@ -445,7 +445,7 @@ void YoloObjectDetector::yolo()
 
   srand(2222222);
 
-  int i;
+  //int i;
   //demoTotal_ = sizeNetwork(net_);
   //predictions_ = (float **) calloc(demoFrame_, sizeof(float*));
  // for (i = 0; i < demoFrame_; ++i){
@@ -472,7 +472,7 @@ void YoloObjectDetector::yolo()
   mat_ = cv::Mat(cv::Size(buff_[0].w, buff_[0].h), CV_MAKETYPE(CV_8U, buff_[0].c));
 
   int count = 0;
-
+	
   if (viewImage_) {
     cv::namedWindow("YOLO V3", cv::WINDOW_NORMAL);
     if (fullScreen_) {
