@@ -74,7 +74,7 @@ bool YoloObjectDetector::readParameters()
   }
 
   // Set vector sizes.
-  nodeHandle_.param("yolo_model/detection_classes/names", classLabels_,
+  nodeHandle_.param("tensorrt_model/detection_classes/names", classLabels_,
                     std::vector<std::string>(0));
   numClasses_ = classLabels_.size();
   rosBoxes_ = std::vector<std::vector<RosBox_> >(numClasses_);
@@ -173,7 +173,7 @@ void YoloObjectDetector::init()
 
   //start TRT stuff
    loadEngine(enginePath,engine_,context_);
-   ROS_INFO_STREAM("detectionJustYolo::loaded TRT model");
+   ROS_INFO_STREAM("YoloObjectDetector::loaded TRT model");
    // buffers for input and output data
    buffers_.resize(engine_->getNbBindings());
    for (size_t i = 0; i < engine_->getNbBindings(); ++i)
@@ -239,7 +239,6 @@ void YoloObjectDetector::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
 
   try {
     cam_image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-    ROS_DEBUG("ROS Image converted for processing.");
   } catch (cv_bridge::Exception& e) {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return;
@@ -258,6 +257,7 @@ void YoloObjectDetector::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
     }
     frameWidth_ = cam_image->image.size().width;
     frameHeight_ = cam_image->image.size().height;
+   //printf("Image size: %d x %d", frameWidth_, frameHeight_);
   }
   return;
 }
@@ -290,10 +290,12 @@ void *YoloObjectDetector::detectInThread()
   running_ = 1;
   
   Mat img = image_to_mat(buffLetter_[buffRdInd_]);
+  
+  //preprocess
   preprocessImage(img, (float *) buffers_[0], input_dims_[0]);
         
   //inference
-  context_->enqueue(batch_size_, buffers_.data(), 0, nullptr);
+  context_->enqueue(batch_size_, buffers_.data(), 0, nullptr);   
         
   std::vector<cv::Rect> boxes;
   std::vector<int> classes;
@@ -432,7 +434,7 @@ void YoloObjectDetector::yolo()
 {
   const auto wait_duration = std::chrono::milliseconds(2000);
   while (!getImageStatus()) {
-    std::cout << "Waiting for image." <<std::endl;
+    std::cout << "\nWaiting for image." <<std::endl;
     if (!isNodeRunning()) {
       return;
     }
@@ -537,6 +539,7 @@ void *YoloObjectDetector::publishInThread()
     ROS_INFO("detection image has been broadcasted");
   }
 
+/*
   // Publish bounding boxes and detection result.
   int num = roiBoxes_[0].num;
   if (num > 0 && num <= 100) {
@@ -586,7 +589,7 @@ void *YoloObjectDetector::publishInThread()
     rosBoxes_[i].clear();
     rosBoxCounter_[i] = 0;
   }
-
+*/
   return 0;
 }
 
@@ -640,7 +643,7 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
 	   std::vector<float> cpu_output(getSizeByDim(dims[i]) * batch_size);
 	   
         cudaMemcpy(cpu_output.data(), (float *) gpu_output[i+1], cpu_output.size() * sizeof(float), cudaMemcpyDeviceToHost);
-
+   
         xt::xarray<float> cpu_reshape = xt::adapt(cpu_output,shapes[i]);
         xt::xarray<float> boxes; 
 	   xt::xarray<int> box_classes; 
@@ -763,9 +766,10 @@ double YoloObjectDetector::exponential_f(float val)
 void YoloObjectDetector::reshapeOutput(xt::xarray<float>& cpu_reshape)
 {
         cpu_reshape = xt::transpose(cpu_reshape, {1,2,0});
-        std::size_t dim4 = (4 + 1 + numClasses_);
+        std::size_t dim4 = (1 + numClasses_);
         std::size_t s1 = cpu_reshape.shape(0);
         std::size_t s2 = cpu_reshape.shape(1);
+        std::size_t s3 = cpu_reshape.shape(2);
         cpu_reshape = cpu_reshape.reshape({s1,s2,3,dim4});
 }
 
