@@ -169,18 +169,18 @@ typedef struct
   std_msgs::Header header;
 } MatImageWithHeader_;
 
-class YoloObjectDetectorTrt
+class YoloObjectDetector
 {
  public:
   /*!
    * Constructor.
    */
-  explicit YoloObjectDetectorTrt(ros::NodeHandle nh);
+  explicit YoloObjectDetector(ros::NodeHandle nh);
 
   /*!
    * Destructor.
    */
-  ~YoloObjectDetectorTrt();
+  ~YoloObjectDetector();
 
  private:
   /*!
@@ -201,30 +201,10 @@ class YoloObjectDetectorTrt
   void cameraCallback(const sensor_msgs::ImageConstPtr& msg);
 
   /*!
-   * Check for objects action goal callback.
-   */
-  void checkForObjectsActionGoalCB();
-
-  /*!
-   * Check for objects action preempt callback.
-   */
-  void checkForObjectsActionPreemptCB();
-
-  /*!
-   * Check if a preempt for the check for objects action has been requested.
-   * @return false if preempt has been requested or inactive.
-   */
-  bool isCheckingForObjects() const;
-
-  /*!
    * Publishes the detection image.
    * @return true if successful.
    */
   bool publishDetectionImage(const cv::Mat& detectionImage);
-    
-  //! Typedefs.
-  typedef actionlib::SimpleActionServer<darknet_ros_msgs::CheckForObjectsAction> CheckForObjectsActionServer;
-  typedef std::shared_ptr<CheckForObjectsActionServer> CheckForObjectsActionServerPtr;
 
   //! ROS node handle.
   ros::NodeHandle nodeHandle_;
@@ -232,9 +212,6 @@ class YoloObjectDetectorTrt
   //! Class labels.
   int numClasses_;
   std::vector<std::string> classLabels_;
-
-  //! Check for objects action server.
-  CheckForObjectsActionServerPtr checkForObjectsActionServer_;
 
   //! Advertise and subscribe to image topics.
   image_transport::ImageTransport imageTransport_;
@@ -306,9 +283,9 @@ class YoloObjectDetectorTrt
   void postprocessResults(std::vector<void*> gpu_output, const std::vector<nvinfer1::Dims> &dims, int batch_size, std::vector<std::vector<int>> &yolo_masks, std::vector<std::vector<float>> &yolo_anchors, const cv::Size orig_dims, float threshold, float nms_threshold, std::vector<cv::Rect> &boxes_return, std::vector<int> &classes_return, std::vector<std::pair<float,int>> &scores_return);
 
   // Darknet.
-  char **demoNames_;
-  image **demoAlphabet_;
-  int demoClasses_;
+  //char **demoNames_;
+  //image **demoAlphabet_;
+  //int demoClasses_;
 
   network *net_;
   std_msgs::Header headerBuff_[3];
@@ -319,19 +296,19 @@ class YoloObjectDetectorTrt
   int buffWrtInd_ = 0;
   cv::Mat mat_;
   float fps_ = 0;
-  float demoThresh_ = 0;
-  float demoHier_ = .5;
+  //float demoThresh_ = 0;
+  //float demoHier_ = .5;
   int running_ = 0;
 
-  int demoDelay_ = 0;
-  int demoFrame_ = 3;
+  //int demoDelay_ = 0;
+  //int demoFrame_ = 3;
   float **predictions_;
-  int demoIndex_ = 0;
+  //int demoIndex_ = 0;
   int demoDone_ = 0;
   float *lastAvg2_;
   float *lastAvg_;
   float *avg_;
-  int demoTotal_ = 0;
+  //int demoTotal_ = 0;
   double demoTime_;
   bool initDone_ = false;
 
@@ -340,7 +317,7 @@ class YoloObjectDetectorTrt
   bool enableConsoleOutput_;
   int waitKeyDelay_;
   int fullScreen_;
-  char *demoPrefix_;
+  //char *demoPrefix_;
 
   std_msgs::Header imageHeader_;
   cv::Mat camImageCopy_;
@@ -386,7 +363,7 @@ class YoloObjectDetectorTrt
   TRTUniquePtr<nvinfer1::IExecutionContext> context_{nullptr};
   
   // get sizes of input and output and allocate memory required for input data and for output
-  data
+  //data
   std::vector<nvinfer1::Dims> input_dims_; // we expect only one input
   std::vector<nvinfer1::Dims> output_dims_; // and one output
   std::vector<void*> buffers_;

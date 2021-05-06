@@ -62,10 +62,10 @@ find_package(catkin REQUIRED
     roscpp
     rospy
     std_msgs
-    actionlib
+    #actionlib
     darknet_ros_msgs
     image_transport
-    nodelet
+    #nodelet
     OpenCV
 )
 
@@ -83,12 +83,12 @@ catkin_package(
   CATKIN_DEPENDS
     cv_bridge
     roscpp
-    actionlib
+    #actionlib
     rospy
     std_msgs
     darknet_ros_msgs
     image_transport
-    nodelet
+    #nodelet
   DEPENDS
     Boost
     OpenCV
@@ -112,7 +112,7 @@ if (CUDA_FOUND)
   )
 
   cuda_add_library(${PROJECT_NAME}_lib
-    src/YoloObjectDetectorTrt.cpp
+    src/YoloObjectDetector.cpp
     src/image_interface.c
 
     ${DARKNET_PATH}/src/activation_layer.c        ${DARKNET_PATH}/src/im2col.c
@@ -177,14 +177,14 @@ if (CUDA_FOUND)
     src/yolo_object_detector_node.cpp
   )
   
-  cuda_add_library(${PROJECT_NAME}_nodelet
-    src/yolo_object_detector_nodelet.cpp
-  )
+#  cuda_add_library(${PROJECT_NAME}_nodelet
+#    src/yolo_object_detector_nodelet.cpp
+#  )
 
 else()
 
   add_library(${PROJECT_NAME}_lib
-    src/YoloObjectDetectorTrt.cpp
+    src/YoloObjectDetector.cpp
     src/image_interface.c
 
     ${DARKNET_PATH}/src/activation_layer.c        ${DARKNET_PATH}/src/im2col.c
@@ -239,9 +239,9 @@ else()
     src/yolo_object_detector_node.cpp
   )
 
-  add_library(${PROJECT_NAME}_nodelet
-    src/yolo_object_detector_nodelet.cpp
-  )
+#  add_library(${PROJECT_NAME}_nodelet
+#    src/yolo_object_detector_nodelet.cpp
+# )
 
 endif()
 
@@ -249,9 +249,9 @@ target_link_libraries(${PROJECT_NAME}
   ${PROJECT_NAME}_lib
 )
 
-target_link_libraries(${PROJECT_NAME}_nodelet
-  ${PROJECT_NAME}_lib
-)
+#target_link_libraries(${PROJECT_NAME}_nodelet
+#  ${PROJECT_NAME}_lib
+#)
 
 add_dependencies(${PROJECT_NAME}_lib
   darknet_ros_msgs_generate_messages_cpp
