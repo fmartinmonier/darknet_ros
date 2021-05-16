@@ -281,7 +281,8 @@ class YoloObjectDetector
    * Post precessing of the image after TensorRT inference.
    */  
   void postprocessResults(std::vector<void*> gpu_output, const std::vector<nvinfer1::Dims> &dims, int batch_size, std::vector<std::vector<int>> &yolo_masks, std::vector<std::vector<float>> &yolo_anchors, const cv::Size orig_dims, float threshold, float nms_threshold, std::vector<cv::Rect> &boxes_return, std::vector<int> &classes_return, std::vector<std::pair<float,int>> &scores_return);
-
+  //void YoloObjectDetector::postprocessResults(float *gpu_output, const nvinfer1::Dims &dims, int batch_size);
+  
   // Darknet.
   //char **demoNames_;
   //image **demoAlphabet_;
@@ -310,6 +311,7 @@ class YoloObjectDetector
   float *avg_;
   //int demoTotal_ = 0;
   double demoTime_;
+  double tic;
   bool initDone_ = false;
 
   RosBox_ *roiBoxes_;
@@ -382,10 +384,53 @@ class YoloObjectDetector
   std::string modelPath;
 };
 
+class CudaStream
+{
+public:
+    CudaStream()
+    {
+        cudaStreamCreate(&mStream);
+    }
+
+    operator cudaStream_t()
+    {
+        return mStream;
+    }
+
+    ~CudaStream()
+    {
+        cudaStreamDestroy(mStream);
+    }
+
+private:
+    cudaStream_t mStream;
+};
+
+class CudaEvent
+{
+public:
+    CudaEvent()
+    {
+        cudaEventCreate(&mEvent);
+    }
+
+    operator cudaEvent_t()
+    {
+        return mEvent;
+    }
+
+    ~CudaEvent()
+    {
+        cudaEventDestroy(mEvent);
+    }
+
+private:
+    cudaEvent_t mEvent;
+};
+
 } /* namespace darknet_ros*/
 
 
 
-  
-  
-  
+
+
