@@ -306,13 +306,13 @@ void *YoloObjectDetector::detectInThread()
   CudaEvent end;
   float elapsedTime;
   
-  cudaEventRecord(start, cuda_stream);
+  //cudaEventRecord(start, cuda_stream);
   //preprocess
   preprocessImage(img, (float *) buffers_[0], input_dims_[0]);
         
   //inference
-  context_->enqueue(batch_size_, buffers_.data(), cuda_stream, nullptr);   
-        
+  context_->enqueue(batch_size_, buffers_.data(), 0, nullptr);   
+
   std::vector<cv::Rect> boxes;
   std::vector<int> classes;
   std::vector<std::pair<float,int>> scores;
@@ -324,16 +324,18 @@ void *YoloObjectDetector::detectInThread()
   postprocessResults(buffers_, output_dims_, batch_size_, yolo_masks_, yolo_anchors_,
   orig_size, yolo_threshold_, nms_threshold_, boxes, classes, scores);
   
-  cudaEventRecord(end, cuda_stream);
+  //cudaEventRecord(end, cuda_stream);
   
-  cudaStreamSynchronize(cuda_stream);
-  cudaEventElapsedTime(&elapsedTime, start, end);
+  //cudaStreamSynchronize(cuda_stream);
+  //cudaEventElapsedTime(&elapsedTime, start, end);
   
   //for(int i=0; i<numClasses_; i++){
   // ROS_INFO("object %s found with confidence: %f", detectionNames[scores[i].second], scores[i].first);
  //}
   
   //ROS_INFO("%f", scores[0].first);
+
+  //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   //ROS_INFO("framerate is %f", 1000/elapsedTime);
   
@@ -344,7 +346,7 @@ void *YoloObjectDetector::detectInThread()
   Mat roi = img.clone();
   Rect bbox;
   
-  
+  /*
   //Sort pair scores, extract bounding boxes and send them to ROS
   if(nboxes>0)
   {
@@ -383,7 +385,7 @@ void *YoloObjectDetector::detectInThread()
     //}
   }
   }
-  
+  */
 
   if (enableConsoleOutput_) {
     printf("\033[2J");
@@ -408,6 +410,8 @@ void *YoloObjectDetector::detectInThread()
   return 0;
 }
 
+
+/*
 void YoloObjectDetector::writeImageToBuffer() {
   if (!initDone_) return;
   // Free space before assigning new value to avoid memory leak.
@@ -424,6 +428,7 @@ void YoloObjectDetector::writeImageToBuffer() {
     buffWrtInd_ = buff_new_wrt_ind;
   }
 }
+*/
 
 void *YoloObjectDetector::displayInThread(void *ptr)
 {
@@ -455,14 +460,14 @@ void *YoloObjectDetector::displayLoop(void *ptr)
   }
 }
 
-void *YoloObjectDetector::detectLoop(void *ptr)
-{
-  while (1) {
-    detectInThread();
-  }
-}
+//void *YoloObjectDetector::detectLoop(void *ptr)
+//{
+//  while (1) {
+//    detectInThread();
+//  }
+//}
 
-/* --> MOST LIKELY WILL BE DELETED
+
 void YoloObjectDetector::yolo()
 {
   const auto wait_duration = std::chrono::milliseconds(2000);
@@ -516,7 +521,7 @@ void YoloObjectDetector::yolo()
     }
   }
 
-
+/*
   demoTime_ = what_time_is_it_now();
   initDone_ = true;
   while (!demoDone_) {
@@ -541,9 +546,9 @@ void YoloObjectDetector::yolo()
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
-
-}
 */
+}
+
 
 
 MatImageWithHeader_ YoloObjectDetector::getMatImageWithHeader()
@@ -637,9 +642,10 @@ void YoloObjectDetector::interpretOutput(xt::xarray<float> &cpu_reshape, xt::xar
 	   xt::xarray<float> box_xy = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(0,2)}));
         xt::xarray<float> box_wh = exponential_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(2,4)})) * anchors_tensor; 
 	   xt::xarray<float> box_confidence = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),4}));
-	   xt::xarray<float> box_class_probs = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(5,9)}));
+	   xt::xarray<float> box_class_probs = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(5,5+numClasses_+1)})); //range here is 13-5=8=numClasses_
         box_confidence = box_confidence.reshape({box_confidence.shape(0),box_confidence.shape(1),box_confidence.shape(2),1});
-          
+      //box_confidence = xt::expand_dims(box_confidence,2);
+
 	   int grid_h = cpu_reshape.shape(0); 
 	   int grid_w = cpu_reshape.shape(1);
 	   xt::xarray<int> aux_arange = xt::arange(0, grid_w);
@@ -673,29 +679,37 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
     std::vector<std::vector<std::size_t>> shapes = { {39, 13, 13}, {39,26,26}, {39,52,52}};
     std::vector<int> classes_final;
     std::vector<float> scores_final;
+
+    //dims.size() indicates the number of yolo layers. For yolov3-tiny, that is 2. For yolov3 it's 3.
     for(int i = 0; i < dims.size(); i++)
     {
 	   std::vector<float> cpu_output(getSizeByDim(dims[i]) * batch_size);
 	   
         cudaMemcpy(cpu_output.data(), (float *) gpu_output[i+1], cpu_output.size() * sizeof(float), cudaMemcpyDeviceToHost);
-        xt::xarray<float> cpu_reshape = xt::adapt(cpu_output,shapes[i]);
+        xt::xarray<float> cpu_reshape = xt::adapt(cpu_output,shapes[i]); //TensorRT outputs a flat tensor. This step reshapes the flat tensor to a tensor corresponding to 
+        //the yolo output shape
         xt::xarray<float> boxes; 
 	      xt::xarray<int> box_classes; 
 	      xt::xarray<float> box_class_scores;
 
-        reshapeOutput(cpu_reshape);
+        reshapeOutput(cpu_reshape);//Not sure why a reshape is needed
 
         std::vector<std::size_t> shape_anchor = {1, 1, yolo_anchors[i].size()/2, 2};
         xt::xarray<float> anchors_tensor = xt::adapt(yolo_anchors[i], shape_anchor);
 
         interpretOutput(cpu_reshape, anchors_tensor, boxes, box_class_scores, box_classes);
-
+        ROS_INFO("reached point 7");
+        ROS_INFO("box_class_scores[%d] is %f", 4, box_class_scores[4]);
+        
+        //Take in the unfiltered bounding box descriptors and discard each cell
+        //whose score is lower than the object threshold set during class initialization.
         auto pos_aux = xt::where(box_class_scores >= threshold);
 	      xt::xarray<int> pos = xt::from_indices(pos_aux);
-
             for(int k =0; k < pos_aux[0].size(); k++){
+              ROS_INFO("reached point 8");
             int indx1 = pos(0,k)*boxes.shape(1)*boxes.shape(2)+pos(1,k) * boxes.shape(2)+pos(2,k);
             scores_final.push_back(box_class_scores(indx1));
+            ROS_INFO("scores is: %f for k = %u where pos_aux[0].size()=%lu ", box_class_scores(indx1), k, pos_aux[0].size());
             classes_final.push_back(box_classes(indx1));
             xt::xarray<float> a = xt::view(boxes, pos(0,k), pos(1,k), pos(2,k), xt::range(0, 4));
             a = a.reshape({1,boxes.shape(3)});
@@ -741,6 +755,7 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
         }
     }  
     ROS_INFO("reached point 6");
+    
 }
 
 void YoloObjectDetector::rectifyBox(Rect& bbox)
@@ -809,10 +824,9 @@ void YoloObjectDetector::reshapeOutput(xt::xarray<float>& cpu_reshape)
 {
         cpu_reshape = xt::transpose(cpu_reshape, {1,2,0});
         std::size_t dim4 = (4 + 1 + numClasses_);
-        std::size_t s1 = cpu_reshape.shape(0);
-        std::size_t s2 = cpu_reshape.shape(1);
-        std::size_t s3 = cpu_reshape.shape(2);
-        cpu_reshape = cpu_reshape.reshape({s1,s2,3,dim4});
+        std::size_t dim1 = cpu_reshape.shape(0);
+        std::size_t dim2 = cpu_reshape.shape(1);
+        cpu_reshape = cpu_reshape.reshape({dim1,dim2,3,dim4});
 }
 
 void YoloObjectDetector::preprocessImage(cv::Mat frame, float* gpu_input, const nvinfer1::Dims& dims)
@@ -821,9 +835,9 @@ void YoloObjectDetector::preprocessImage(cv::Mat frame, float* gpu_input, const 
     cv::cuda::GpuMat gpu_frame;
     gpu_frame.upload(frame);
     
-    auto input_width = dims.d[2];
-    auto input_height = dims.d[1];
-    auto channels = dims.d[0];
+    auto input_width = dims.d[3];
+    auto input_height = dims.d[2];
+    auto channels = dims.d[1];
     auto input_size = cv::Size(input_width, input_height);
     
     //resize
