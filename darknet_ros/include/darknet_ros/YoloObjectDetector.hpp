@@ -382,6 +382,10 @@ class YoloObjectDetector
   std::string configPath;
   std::string labelsPath;
   std::string modelPath;
+  
+  //debugging stuff
+  int iter = 1;
+  double toc = 1;
 };
 
 class CudaStream

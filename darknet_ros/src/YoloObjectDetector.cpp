@@ -238,6 +238,7 @@ void YoloObjectDetector::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
   ROS_DEBUG("[YoloObjectDetector] USB image received.");
 
   cv_bridge::CvImagePtr cam_image;
+  tic = what_time_is_it_now();
 
   try {
     cam_image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
@@ -251,13 +252,14 @@ void YoloObjectDetector::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
       boost::unique_lock<boost::shared_mutex> lockImageCallback(mutexImageCallback_);
       imageHeader_ = msg->header;
       camImageCopy_ = cam_image->image.clone();
-      tic = what_time_is_it_now();
+      iter = iter + 1;
       detectInThread();
-      fps_ = 1./(what_time_is_it_now() - tic);
-      tic = what_time_is_it_now();
+      ROS_INFO("we're at iter = %d", iter);
       if (viewImage_) {
           displayInThread(0);
       }
+      fps_ = 1./(what_time_is_it_now() - tic);
+      ROS_INFO("framerate is : %f", fps_);
       publishInThread();
     }
     {
@@ -310,8 +312,11 @@ void *YoloObjectDetector::detectInThread()
   //preprocess
   preprocessImage(img, (float *) buffers_[0], input_dims_[0]);
         
-  //inference
+  //asynchronous inference 
   context_->enqueue(batch_size_, buffers_.data(), 0, nullptr);   
+
+  //synchronous inference
+  //context_->execute(batch_size_, buffers_.data());   
 
   std::vector<cv::Rect> boxes;
   std::vector<int> classes;
@@ -335,9 +340,11 @@ void *YoloObjectDetector::detectInThread()
   
   //ROS_INFO("%f", scores[0].first);
 
-  //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   //ROS_INFO("framerate is %f", 1000/elapsedTime);
+  int iter_2 = iter;
+  ROS_INFO("Hey, i'm in detect in thread iter %d", iter_2);
   
   int nboxes = scores.size();
   int count = 0;
@@ -433,6 +440,7 @@ void YoloObjectDetector::writeImageToBuffer() {
 void *YoloObjectDetector::displayInThread(void *ptr)
 {
   //int c = show_image_cv(buff_[(buffRdInd_ + 1)%3], "YOLO V3", waitKeyDelay_);
+  
   cv::imshow("YOLO V3", mat_);
   int c = cv::waitKey(waitKeyDelay_);
   if (c != -1) c = c%256;
@@ -460,13 +468,14 @@ void *YoloObjectDetector::displayLoop(void *ptr)
   }
 }
 
-//void *YoloObjectDetector::detectLoop(void *ptr)
-//{
-//  while (1) {
-//    detectInThread();
-//  }
-//}
-
+/*
+void *YoloObjectDetector::detectLoop(void *ptr)
+{
+  while (1) {
+    detectInThread();
+  }
+}
+*/
 
 void YoloObjectDetector::yolo()
 {
