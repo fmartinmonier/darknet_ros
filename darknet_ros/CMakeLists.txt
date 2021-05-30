@@ -12,6 +12,8 @@ find_package(xtensor REQUIRED)
 find_library(NVINFER  NAMES nvinfer)
 find_library(NVINFERPLUGIN NAMES nvinfer_plugin)
 find_library(NVPARSERS NAMES nvparsers)
+#find_library(YOLO_LAYER NAMES yolo_layer HINTS ${CMAKE_CURRENT_SOURCE_DIR}../../../../git/tensorrt_demos/plugins)
+
 
 # Define path of darknet folder here.
 find_path(DARKNET_PATH
@@ -103,6 +105,7 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
   ${OpenCV_INCLUDE_DIRS}
   ${nvinfer_INCLUDE_DIRS}
+  #/home/integration/git/tensorrt_demos/plugins
 )
 
 if (CUDA_FOUND)
@@ -166,6 +169,7 @@ if (CUDA_FOUND)
     curand
     nvinfer
     nvinfer_plugin
+    #yolo_layer
     ${Boost_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${catkin_LIBRARIES}
@@ -175,6 +179,7 @@ if (CUDA_FOUND)
 
   cuda_add_executable(${PROJECT_NAME}
     src/yolo_object_detector_node.cpp
+    /home/integration/git/tensorrt_demos/plugins/yolo_layer.o
   )
   
 #  cuda_add_library(${PROJECT_NAME}_nodelet
@@ -228,6 +233,7 @@ else()
     stdc++
     nvinfer
     nvinfer_plugin
+    #yolo_layer
     ${Boost_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${TENSORRT_LIBRARIES}
@@ -237,6 +243,7 @@ else()
 
   add_executable(${PROJECT_NAME}
     src/yolo_object_detector_node.cpp
+    /home/integration/git/tensorrt_demos/plugins/yolo_layer.o
   )
 
 #  add_library(${PROJECT_NAME}_nodelet

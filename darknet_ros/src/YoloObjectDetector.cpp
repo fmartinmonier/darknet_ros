@@ -8,6 +8,7 @@
 
 // yolo object detector
 #include "darknet_ros/YoloObjectDetector.hpp"
+//#include "darknet_ros/yolo_layer.h"
 
 // Check for xServer
 #include <X11/Xlib.h>
@@ -334,17 +335,15 @@ void *YoloObjectDetector::detectInThread()
   //cudaStreamSynchronize(cuda_stream);
   //cudaEventElapsedTime(&elapsedTime, start, end);
   
-  //for(int i=0; i<numClasses_; i++){
-  // ROS_INFO("object %s found with confidence: %f", detectionNames[scores[i].second], scores[i].first);
- //}
+  for(int i=0; i<numClasses_; i++){
+   ROS_INFO("object %s found with confidence: %f", detectionNames[scores[i].second], scores[i].first);
+ }
   
   //ROS_INFO("%f", scores[0].first);
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   //ROS_INFO("framerate is %f", 1000/elapsedTime);
-  int iter_2 = iter;
-  ROS_INFO("Hey, i'm in detect in thread iter %d", iter_2);
   
   int nboxes = scores.size();
   int count = 0;
@@ -707,18 +706,15 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
         xt::xarray<float> anchors_tensor = xt::adapt(yolo_anchors[i], shape_anchor);
 
         interpretOutput(cpu_reshape, anchors_tensor, boxes, box_class_scores, box_classes);
-        ROS_INFO("reached point 7");
-        ROS_INFO("box_class_scores[%d] is %f", 4, box_class_scores[4]);
         
         //Take in the unfiltered bounding box descriptors and discard each cell
         //whose score is lower than the object threshold set during class initialization.
         auto pos_aux = xt::where(box_class_scores >= threshold);
-	      xt::xarray<int> pos = xt::from_indices(pos_aux);
+	xt::xarray<int> pos = xt::from_indices(pos_aux);
             for(int k =0; k < pos_aux[0].size(); k++){
-              ROS_INFO("reached point 8");
             int indx1 = pos(0,k)*boxes.shape(1)*boxes.shape(2)+pos(1,k) * boxes.shape(2)+pos(2,k);
             scores_final.push_back(box_class_scores(indx1));
-            ROS_INFO("scores is: %f for k = %u where pos_aux[0].size()=%lu ", box_class_scores(indx1), k, pos_aux[0].size());
+            //ROS_INFO("scores is: %f for k = %u where pos_aux[0].size()=%lu ", box_class_scores(indx1), k, pos_aux[0].size());
             classes_final.push_back(box_classes(indx1));
             xt::xarray<float> a = xt::view(boxes, pos(0,k), pos(1,k), pos(2,k), xt::range(0, 4));
             a = a.reshape({1,boxes.shape(3)});
@@ -727,7 +723,6 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
       //std::cout << "score: " << scores_final[1];
             
     }
-    ROS_INFO("reached point 1");
     // NMS for each class
     boxes_final = xt::view(boxes_final, xt::range(1,_), xt::all());
     xt::xarray<int> image_dims = {orig_dims.width, orig_dims.height, orig_dims.width, orig_dims.height};
@@ -739,22 +734,18 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
     unique_classes.erase(last, unique_classes.end());
     for (int i : unique_classes)
     {   
-      ROS_INFO("reached point 2");
         std::vector<int> ind;
         std::vector<cv::Rect> boxes_selected;
         std::vector<float> scores;
         for(int j=0;j<classes_final.size();j++)
         {
-          ROS_INFO("reached point 3");
             if(classes_final[j]==i)
-            {
-              ROS_INFO("reached point 4");
+            {;
                 scores.push_back(scores_final[j]);
                 boxes_selected.push_back(cv::Rect(boxes_final(j,0),boxes_final(j,1),boxes_final(j,2),boxes_final(j,3)));
-                std::cout << "class: " << classes_final[j] << " | " << "confidence: " << 100 * scores_final[j] << "%";
+                //std::cout << "class: " << classes_final[j] << " | " << "confidence: " << 100 * scores_final[j] << "%";
             }
         }
-        ROS_INFO("reached point 5");
         cv::dnn::NMSBoxes(boxes_selected, scores, threshold, nms_threshold,ind);
         for(int k=0;k<ind.size();k++)
         {
@@ -763,7 +754,6 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
             classes_return.push_back(i);
         }
     }  
-    ROS_INFO("reached point 6");
     
 }
 
@@ -803,6 +793,7 @@ void YoloObjectDetector::loadEngine(const std::string& model_path, TRTUniquePtr<
         return;
     }
 
+    //initLibNvInferPlugins(&gLoggerYolo, "");
     TRTUniquePtr<nvinfer1::IRuntime> runtime{nvinfer1::createInferRuntime(gLoggerYolo)};
     engine_.reset(runtime->deserializeCudaEngine(engineData.data(), fsize, nullptr));
     context_.reset(engine_->createExecutionContext());

@@ -27,8 +27,10 @@
 #include <cstddef>
 #include <NvInfer.h>
 #include <NvInferRuntime.h>
+#include <NvInferPlugin.h>
 #include <NvOnnxParser.h>
 #include <cuda_runtime_api.h>
+
 
 // ROS
 #include <ros/ros.h>
@@ -91,6 +93,7 @@
 extern "C" {
 #include "network.h"
 #include "detection_layer.h"
+//#include "yolo_layer.h"
 #include "region_layer.h"
 #include "cost_layer.h"
 #include "utils.h"
