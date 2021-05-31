@@ -645,12 +645,13 @@ void YoloObjectDetector::interpretOutput(xt::xarray<float> &cpu_reshape, xt::xar
 {
    
         auto sigmoid_v = xt::vectorize(sigmoid_f);
-	   auto exponential_v = xt::vectorize(exponential_f);
+	      auto exponential_v = xt::vectorize(exponential_f);
        
-	   xt::xarray<float> box_xy = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(0,2)}));
+	      xt::xarray<float> box_xy = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(0,2)}));
         xt::xarray<float> box_wh = exponential_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(2,4)})) * anchors_tensor; 
-	   xt::xarray<float> box_confidence = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),4}));
-	   xt::xarray<float> box_class_probs = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(5,5+numClasses_+1)})); //range here is 13-5=8=numClasses_
+	      xt::xarray<float> box_confidence = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),4}));
+	      //xt::xarray<float> box_class_probs = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(5,5+numClasses_+1)})); //range here is 13-5=8=numClasses_
+        xt::xarray<float> box_class_probs = sigmoid_v(xt::strided_view(cpu_reshape,{xt::all(),xt::all(),xt::all(),xt::range(5,9)}));
         box_confidence = box_confidence.reshape({box_confidence.shape(0),box_confidence.shape(1),box_confidence.shape(2),1});
       //box_confidence = xt::expand_dims(box_confidence,2);
 
@@ -671,7 +672,7 @@ void YoloObjectDetector::interpretOutput(xt::xarray<float> &cpu_reshape, xt::xar
 	  
 	   xt::xarray<int> grid = xt::concatenate(xtuple(col, row), 3);
 	   box_xy += grid;
-	   box_xy /= (grid_w, grid_h); 
+     box_xy /= (grid_w, grid_h);
 	   box_wh /= (yolo_res,yolo_res); //input resolution yolo
 	   box_xy -= (box_wh / 2.);
 
@@ -707,6 +708,7 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
 
         interpretOutput(cpu_reshape, anchors_tensor, boxes, box_class_scores, box_classes);
         
+        
         //Take in the unfiltered bounding box descriptors and discard each cell
         //whose score is lower than the object threshold set during class initialization.
         auto pos_aux = xt::where(box_class_scores >= threshold);
@@ -721,8 +723,9 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
             boxes_final = xt::concatenate(xtuple(boxes_final,a)); 
        }
       //std::cout << "score: " << scores_final[1];
-            
+           
     }
+    
     // NMS for each class
     boxes_final = xt::view(boxes_final, xt::range(1,_), xt::all());
     xt::xarray<int> image_dims = {orig_dims.width, orig_dims.height, orig_dims.width, orig_dims.height};
@@ -835,9 +838,9 @@ void YoloObjectDetector::preprocessImage(cv::Mat frame, float* gpu_input, const 
     cv::cuda::GpuMat gpu_frame;
     gpu_frame.upload(frame);
     
-    auto input_width = dims.d[3];
-    auto input_height = dims.d[2];
-    auto channels = dims.d[1];
+    auto input_width = dims.d[2];
+    auto input_height = dims.d[1];
+    auto channels = dims.d[0];
     auto input_size = cv::Size(input_width, input_height);
     
     //resize
