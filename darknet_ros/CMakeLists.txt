@@ -180,6 +180,7 @@ if (CUDA_FOUND)
   cuda_add_executable(${PROJECT_NAME}
     src/yolo_object_detector_node.cpp
     /home/integration/git/tensorrt_demos/plugins/yolo_layer.o
+    #/home/integration/catkin_ws/src/yolov4_trt_ros/plugins/yolo_layer.o
   )
   
 #  cuda_add_library(${PROJECT_NAME}_nodelet
@@ -244,6 +245,7 @@ else()
   add_executable(${PROJECT_NAME}
     src/yolo_object_detector_node.cpp
     /home/integration/git/tensorrt_demos/plugins/yolo_layer.o
+    #/home/integration/catkin_ws/src/yolov4_trt_ros/plugins/yolo_layer.o
   )
 
 #  add_library(${PROJECT_NAME}_nodelet

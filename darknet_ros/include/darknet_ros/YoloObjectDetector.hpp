@@ -376,7 +376,7 @@ class YoloObjectDetector
   std::vector<std::vector<float>> yolo_anchors_;
   cv::Size original_dims_;
   float yolo_threshold_;
-  double nms_threshold_ = 0.2;
+  double nms_threshold_ = 0.8;
   int yolo_res;
     
   // general model stuff

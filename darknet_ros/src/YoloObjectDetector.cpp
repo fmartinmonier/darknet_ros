@@ -129,7 +129,7 @@ void YoloObjectDetector::init()
   }
 
   // Get YOLO resolution
-  nodeHandle_.param("tensorrt_model/yolo_resolution/value", yolo_res, (int) 608);
+  nodeHandle_.param("tensorrt_model/yolo_resolution/value", yolo_res, (int) 416);
 
   // Load network
   //yoloThread_ = std::thread(&YoloObjectDetector::yolo, this);
@@ -680,6 +680,7 @@ void YoloObjectDetector::interpretOutput(xt::xarray<float> &cpu_reshape, xt::xar
 	   xt::xarray<float> box_scores = box_confidence * box_class_probs;
 	   box_classes = xt::argmax(box_scores,3);
 	   box_class_scores = xt::amax(box_scores,3);
+     
 }
 
 void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const std::vector<nvinfer1::Dims> &dims, int batch_size, std::vector<std::vector<int>> &yolo_masks, std::vector<std::vector<float>> &yolo_anchors, const cv::Size orig_dims, float threshold, float nms_threshold, std::vector<cv::Rect> &boxes_return, std::vector<int> &classes_return, std::vector<std::pair<float,int>> &scores_return)
@@ -708,7 +709,12 @@ void YoloObjectDetector::postprocessResults(std::vector<void*> gpu_output, const
 
         interpretOutput(cpu_reshape, anchors_tensor, boxes, box_class_scores, box_classes);
         
-        
+        /*
+        auto pos_aux = xt::where(box_class_scores >= threshold);
+        boxes_final = boxes(pos_aux);
+        classes_final= box_classes[pos_aux];
+        scores_final = box_class_scores[pos_aux]; 
+        */
         //Take in the unfiltered bounding box descriptors and discard each cell
         //whose score is lower than the object threshold set during class initialization.
         auto pos_aux = xt::where(box_class_scores >= threshold);
