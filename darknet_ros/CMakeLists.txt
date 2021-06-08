@@ -5,6 +5,16 @@ project(darknet_ros)
 set(CMAKE_CXX_FLAGS "-std=c++14 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-Wall -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-variable -Wfatal-errors -fPIC ${CMAKE_C_FLAGS}")
 
+# Flags
+find_package(Eigen3 REQUIRED)
+find_package(xtensor REQUIRED)
+#find_package(TensorRT REQUIRED)
+find_library(NVINFER  NAMES nvinfer)
+find_library(NVINFERPLUGIN NAMES nvinfer_plugin)
+find_library(NVPARSERS NAMES nvparsers)
+#find_library(YOLO_LAYER NAMES yolo_layer HINTS ${CMAKE_CURRENT_SOURCE_DIR}../../../../git/tensorrt_demos/plugins)
+
+
 # Define path of darknet folder here.
 find_path(DARKNET_PATH
   NAMES "README.md"
@@ -46,7 +56,7 @@ endif ( X11_FOUND )
 
 # Find rquired packeges
 find_package(Boost REQUIRED COMPONENTS thread)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 4.2.0 REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(catkin REQUIRED
   COMPONENTS
@@ -54,10 +64,11 @@ find_package(catkin REQUIRED
     roscpp
     rospy
     std_msgs
-    actionlib
+    #actionlib
     darknet_ros_msgs
     image_transport
-    nodelet
+    #nodelet
+    OpenCV
 )
 
 # Enable OPENCV in darknet
@@ -67,19 +78,22 @@ add_definitions(-O4 -g)
 catkin_package(
   INCLUDE_DIRS
     include
+    ${EIGEN3_INCLUDE_DIR}
+    ${nvinfer_INCLUDE_DIRS}
   LIBRARIES
     ${PROJECT_NAME}_lib
   CATKIN_DEPENDS
     cv_bridge
     roscpp
-    actionlib
+    #actionlib
     rospy
     std_msgs
     darknet_ros_msgs
     image_transport
-    nodelet
+    #nodelet
   DEPENDS
     Boost
+    OpenCV
 )
 
 include_directories(
@@ -88,6 +102,10 @@ include_directories(
   include
   ${Boost_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
+  ${OpenCV_INCLUDE_DIRS}
+  ${nvinfer_INCLUDE_DIRS}
+  #/home/integration/git/tensorrt_demos/plugins
 )
 
 if (CUDA_FOUND)
@@ -149,19 +167,25 @@ if (CUDA_FOUND)
     cudart
     cublas
     curand
+    nvinfer
+    nvinfer_plugin
+    #yolo_layer
     ${Boost_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
+    ${TENSORRT_LIBRARIES}
   )
 
   cuda_add_executable(${PROJECT_NAME}
     src/yolo_object_detector_node.cpp
+    /home/integration/git/tensorrt_demos/plugins/yolo_layer.o
+    #/home/integration/catkin_ws/src/yolov4_trt_ros/plugins/yolo_layer.o
   )
   
-  cuda_add_library(${PROJECT_NAME}_nodelet
-    src/yolo_object_detector_nodelet.cpp
-  )
+#  cuda_add_library(${PROJECT_NAME}_nodelet
+#    src/yolo_object_detector_nodelet.cpp
+#  )
 
 else()
 
@@ -208,19 +232,25 @@ else()
     m
     pthread
     stdc++
+    nvinfer
+    nvinfer_plugin
+    #yolo_layer
     ${Boost_LIBRARIES}
     ${OpenCV_LIBRARIES}
+    ${TENSORRT_LIBRARIES}
     ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
   )
 
   add_executable(${PROJECT_NAME}
     src/yolo_object_detector_node.cpp
+    /home/integration/git/tensorrt_demos/plugins/yolo_layer.o
+    #/home/integration/catkin_ws/src/yolov4_trt_ros/plugins/yolo_layer.o
   )
 
-  add_library(${PROJECT_NAME}_nodelet
-    src/yolo_object_detector_nodelet.cpp
-  )
+#  add_library(${PROJECT_NAME}_nodelet
+#    src/yolo_object_detector_nodelet.cpp
+# )
 
 endif()
 
@@ -228,9 +258,9 @@ target_link_libraries(${PROJECT_NAME}
   ${PROJECT_NAME}_lib
 )
 
-target_link_libraries(${PROJECT_NAME}_nodelet
-  ${PROJECT_NAME}_lib
-)
+#target_link_libraries(${PROJECT_NAME}_nodelet
+#  ${PROJECT_NAME}_lib
+#)
 
 add_dependencies(${PROJECT_NAME}_lib
   darknet_ros_msgs_generate_messages_cpp
